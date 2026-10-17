@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
         RecurringRuleEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class ExpenseMateDatabase : RoomDatabase() {

@@ -8,7 +8,7 @@ import java.util.Locale
 object CurrencyFormatter {
 
     fun format(amount: Double, currency: CurrencyConfig = CurrencyConfig.DEFAULT): String {
-        val symbols = DecimalFormatSymbols(Locale.getDefault())
+        val symbols = DecimalFormatSymbols(Locale.US)
         val formatter = DecimalFormat("#,##0.00", symbols)
         val formattedNumber = formatter.format(Math.abs(amount))
         return if (amount < 0) {
@@ -21,11 +21,12 @@ object CurrencyFormatter {
     fun formatCompact(amount: Double, currency: CurrencyConfig = CurrencyConfig.DEFAULT): String {
         val abs = Math.abs(amount)
         val sign = if (amount < 0) "-" else ""
+        val symbols = DecimalFormatSymbols(Locale.US)
         return when {
-            abs >= 10_000_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0").format(abs / 10_000_000)}Cr"
-            abs >= 100_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0").format(abs / 100_000)}L"
-            abs >= 1_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0").format(abs / 1_000)}k"
-            else -> "$sign${currency.symbol}${DecimalFormat("#0").format(abs)}"
+            abs >= 10_000_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0", symbols).format(abs / 10_000_000)}Cr"
+            abs >= 100_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0", symbols).format(abs / 100_000)}L"
+            abs >= 1_000 -> "$sign${currency.symbol}${DecimalFormat("#0.0", symbols).format(abs / 1_000)}k"
+            else -> "$sign${currency.symbol}${DecimalFormat("#0", symbols).format(abs)}"
         }
     }
 
