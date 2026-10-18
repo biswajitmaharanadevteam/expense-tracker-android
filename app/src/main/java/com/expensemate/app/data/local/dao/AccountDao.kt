@@ -17,11 +17,9 @@ data class AccountBalanceResult(
     val colorHex: String,
     val isDefault: Boolean,
     val totalIncome: Double,
-    val totalExpense: Double
-) {
+    val totalExpense: Double,
     val currentBalance: Double
-        get() = initialBalance + totalIncome - totalExpense
-}
+)
 
 @Dao
 interface AccountDao {
@@ -50,7 +48,11 @@ interface AccountDao {
     @Query("""
         SELECT a.id AS accountId, a.name, a.type, a.initialBalance, a.colorHex, a.isDefault,
                COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'INCOME'), 0.0) AS totalIncome,
-               COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'EXPENSE'), 0.0) AS totalExpense
+               COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'EXPENSE'), 0.0) AS totalExpense,
+               (a.initialBalance 
+                + COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'INCOME'), 0.0) 
+                - COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'EXPENSE'), 0.0)
+               ) AS currentBalance
         FROM accounts a
         ORDER BY a.isDefault DESC, a.name ASC
     """)

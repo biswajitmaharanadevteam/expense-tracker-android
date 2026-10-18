@@ -7,6 +7,9 @@ on:
     branches: [ "master", "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,6 +17,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,9 +42,17 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "==================== BUILD LOG FAILURE SUMMARY ===================="
-          tail -n 150 build.log
+          echo "==================== KOTLIN COMPILATION ERRORS ===================="
+          grep -E "e: |error: |FAILURE: " build.log || true
           echo "==================================================================="
+          echo "==================== BUILD LOG FAILURE SUMMARY ===================="
+          tail -n 100 build.log
+          echo "==================================================================="
+          PASTE_URL=$(curl -s --data-binary @build.log https://paste.rs || echo "")
+          echo "### ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$PASTE_URL" ]; then
+            echo "[View Full Build Log online]($PASTE_URL)" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload Build Log on Failure
         uses: actions/upload-artifact@v4
@@ -49,6 +62,18 @@ jobs:
           path: build.log
           retention-days: 7
 
+      - name: Push Error Log to branch on Failure
+        if: failure()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B error-log
+          cp build.log error.log
+          git add error.log
+          git commit -m "Add build error log" || true
+          git push -f origin error-log || true
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         if: success()
@@ -57,7 +82,20 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
+      - name: Push APK to release-apk branch on Success
+        if: success()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B release-apk
+          cp app/build/outputs/apk/debug/*.apk ./ExpenseMate-Debug.apk
+          git add ExpenseMate-Debug.apk
+          git commit -m "Release compiled ExpenseMate APK" || true
+          git push -f origin release-apk || true
+          echo "### 🎉 APK Successfully Built!" >> $GITHUB_STEP_SUMMARY
+          echo "[Direct Download ExpenseMate-Debug.apk](https://github.com/${{ github.repository }}/raw/release-apk/ExpenseMate-Debug.apk)" >> $GITHUB_STEP_SUMMARY
+
       - name: Run Unit Tests
         run: gradle test --stacktrace --no-daemon
         continue-on-error: true
-
